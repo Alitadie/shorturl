@@ -6,7 +6,10 @@ import (
 	"shorturl/config"
 	"shorturl/model"
 	"shorturl/pkg/base62"
+	"sync"
 	"time"
+
+	"github.com/bits-and-blooms/bloom/v3"
 
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -18,6 +21,43 @@ const (
 	EmptyFlag      = "EMPTY_Result"
 	EmptyTTL       = 5 * time.Minute
 )
+
+// BloomFilter
+var (
+	// NewWithEstimates(预计存放的数据量, 可接受的误判率)
+	// 例如：预计存 100万条，允许 1% 的误判
+	bloomFilter = bloom.NewWithEstimates(1000000, 0.01)
+	// 布隆过滤器本身是非并发安全的，需要加锁
+	bloomMu sync.RWMutex
+)
+
+// InitBloomFilter: 系统启动时调用，进行预热
+func InitBloomFilter() {
+	var offset int
+	limit := 1000
+	log.Println("🔥 正在预热布隆过滤器...")
+	// 分页读取所有数据的 ID (实际生产中可能是读取专门的索引文件或由数据中心推送)
+	for {
+		var links []model.ShortLink
+		// 只查询 ID 和 ShortID 字段，节省内存
+		result := config.DB.Select("short_id").Offset(offset).Limit(limit).Find(&links)
+		if result.Error != nil || len(links) == 0 {
+			break
+		}
+
+		bloomMu.Lock()
+
+		for _, link := range links {
+			bloomFilter.AddString(link.ShortID)
+		}
+		bloomMu.Unlock()
+
+		offset += limit
+		log.Printf("已加载 %d 条数据...", offset)
+	}
+	log.Println("✅ 布隆过滤器预热完成！恶意请求防御屏障已开启。")
+
+}
 
 // SaveLink 使用 Base62 策略
 // 输入: 只含 OriginalURL 的对象
@@ -37,7 +77,13 @@ func SaveLinkV2(link *model.ShortLink) error {
 		if err := tx.Model(link).Update("short_id", link.ShortID).Error; err != nil {
 			return err
 		}
-		// 3. 写入预热缓存
+
+		// 3. 【重点】同步添加到布隆过滤器
+		bloomMu.Lock()
+		bloomFilter.AddString(link.ShortID)
+		bloomMu.Unlock()
+
+		// 4. 写入预热缓存
 		if err := config.RDB.Set(config.Ctx, CacheKeyPrefix+link.ShortID, link.OriginalURL, CacheTTL).Err(); err != nil {
 			return err
 		}
@@ -59,6 +105,19 @@ func SaveLink(link *model.ShortLink) error {
 }
 
 func GetOriginalURL(shortID string) (string, error) {
+
+	// --- 第一道防线：内存级拦截 (纳秒级) ---
+	bloomMu.RLock()
+	exists := bloomFilter.TestString(shortID)
+	bloomMu.RUnlock()
+
+	if !exists {
+		// 如果布隆过滤器说不存在，那就一定不存在
+		log.Printf("🛡️ Bloom Filter Blocked: %s", shortID)
+		return "", errors.New("link not found (bloom blocked)")
+	}
+
+	// --- 第二道防线：Redis (毫秒级) ---
 	key := CacheKeyPrefix + shortID
 	log.Println("key:", key)
 	val, err := config.RDB.Get(config.Ctx, key).Result()
@@ -73,6 +132,7 @@ func GetOriginalURL(shortID string) (string, error) {
 		log.Println("Redis Error:", err)
 	}
 
+	// --- 第三道防线：DB (最慢) ---
 	var link model.ShortLink
 	if err := config.DB.Where("short_id = ?", shortID).First(&link).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -81,6 +141,7 @@ func GetOriginalURL(shortID string) (string, error) {
 			config.RDB.Set(config.Ctx, key, EmptyFlag, EmptyTTL)
 			return "", errors.New("link not found (db intercept)")
 		}
+		// 理论上能走到这的概率只有 1% (误判率)
 		return "", err
 	}
 
