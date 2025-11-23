@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"shorturl/model"
 	"shorturl/repository"
-	"shorturl/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,27 +19,17 @@ func CreateShortLink(c *gin.Context) {
 		return
 	}
 
-	var id string
-	var err error
-	for i := 0; i < 10; i++ {
-		id = service.GenerateShortID(6)
-		link := &model.ShortLink{
-			ShortID:     id,
-			OriginalURL: req.URL,
-		}
-
-		if err = repository.SaveLink(link); err == nil {
-			break
-		}
+	link := &model.ShortLink{
+		OriginalURL: req.URL,
 	}
 
-	if err != nil {
+	if err := repository.SaveLinkV2(link); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate"})
 		return
 	}
 
-	shortURL := "http://localhost:8080/" + id
-	c.JSON(http.StatusOK, gin.H{"short_url": shortURL, "id": id})
+	shortURL := "http://localhost:8080/" + link.ShortID
+	c.JSON(http.StatusOK, gin.H{"short_url": shortURL, "id": link.ShortID})
 }
 
 func RedirectLink(c *gin.Context) {

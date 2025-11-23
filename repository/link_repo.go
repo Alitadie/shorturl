@@ -5,6 +5,7 @@ import (
 	"log"
 	"shorturl/config"
 	"shorturl/model"
+	"shorturl/pkg/base62"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -17,6 +18,32 @@ const (
 	EmptyFlag      = "EMPTY_Result"
 	EmptyTTL       = 5 * time.Minute
 )
+
+// SaveLink 使用 Base62 策略
+// 输入: 只含 OriginalURL 的对象
+// 输出: 存好的完整对象 (含 ID 和 ShortID)
+func SaveLinkV2(link *model.ShortLink) error {
+	// 开启事务 (Transaction)
+	return config.DB.Transaction(func(tx *gorm.DB) error {
+		// 生成短链 ID
+		// 1. 先插入数据，获取数据库自增 ID (MySQL/SQLite 自动生成)
+		// 此时 link.ShortID 是空的，link.ID 会被填入值
+		if err := tx.Create(link).Error; err != nil {
+			return err
+		}
+		// 2. 根据自增 ID 生成 Base62 编码
+		// 为了防止太短 (比如 ID=1 -> "b")，我们可以加个偏移量 (Start from 1000000)
+		link.ShortID = base62.Encode(uint64(link.ID) + 1000000)
+		if err := tx.Model(link).Update("short_id", link.ShortID).Error; err != nil {
+			return err
+		}
+		// 3. 写入预热缓存
+		if err := config.RDB.Set(config.Ctx, CacheKeyPrefix+link.ShortID, link.OriginalURL, CacheTTL).Err(); err != nil {
+			return err
+		}
+		return nil
+	})
+}
 
 // Save 存储数据
 func SaveLink(link *model.ShortLink) error {
