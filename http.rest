@@ -13,7 +13,11 @@ Content-Type: application/json
 }
 ###
 
-GET http://{{host}}/NNUAfo
+GET http://{{host}}/Ce6Fpb
+
+###
+
+GET http://{{host}}/errorDB
 
 ###
 # @prompt id
