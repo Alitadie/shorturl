@@ -1,0 +1,23 @@
+
+@hostname = localhost
+@port = 8080
+@host = {{hostname}}:{{port}}
+
+
+###
+POST http://{{host}}/shorten
+Content-Type: application/json
+
+{
+    "url": "https://www.qq.com"
+}
+###
+
+GET http://{{host}}/NNUAfo
+
+###
+# @prompt id
+GET http://{{host}}/{{id}}
+
+###
+GET http://{{host}}/{{$guid}}
