@@ -43,11 +43,17 @@ func main() {
 	config.Init()
 	repository.InitBloomFilter()
 
-	gin.SetMode(gin.DebugMode)
-
 	//2. 配置Gin
 	r := gin.New()
+
+	gin.SetMode(gin.DebugMode)
+
 	r.Use(gin.Recovery())
+
+	// 限制每秒 1 次请求，突发最多 3 次
+	limiter := middleware.NewIPLimiter(1, 3)
+	r.Use(middleware.RateLimitMiddleware(limiter))
+
 	r.Use(middleware.RequestLogger())
 
 	// 注册 Swagger 路由

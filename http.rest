@@ -13,7 +13,7 @@ Content-Type: application/json
 }
 ###
 
-GET http://{{host}}/emji
+GET http://{{host}}/emjn
 
 ###
 
