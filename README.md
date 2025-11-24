@@ -1,46 +1,46 @@
-# ShortURL - High Performance URL Shortener Service
+# ShortURL - 高性能 URL 短链接服务
 
-[![Go Backend CI](https://github.com/YOUR_GITHUB_USERNAME/shorturl/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/shorturl/actions)
+[![Go Backend CI](https://github.com/Alitadie/shorturl/actions/workflows/ci.yml/badge.svg)](https://github.com/Alitadie/shorturl/actions)
 ![Go Version](https://img.shields.io/badge/Go-1.23-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-A scalable URL shortener service built with Golang, Redis, SQLite (with Bloom Filter support). Designed using Domain-Driven Design (DDD) principles and Cache-Aside pattern.
+基于 Golang、Redis、SQLite（支持布隆过滤器）构建的可扩展 URL 短链接服务。采用领域驱动设计 (DDD) 原则和 Cache-Aside 模式设计。
 
-## 🚀 Features
+## 🚀 功能特性
 
-- **High Performance**: In-memory **Bloom Filter** to block malicious non-existent keys (Cache Penetration Protection).
-- **Scalable ID**: **Base62** algorithm ensuring unique and non-colliding short links.
-- **Cache Strategy**: Redis **Cache-Aside** pattern + Hotspot invalidation strategy.
-- **Architecture**: 12-Factor App compliant, Clean Architecture (Handler -> Service -> Repository).
-- **Deployment**: Dockerized & Cloud-Native ready (Docker Compose support).
+- **高性能**: 内存 **布隆过滤器** 拦截恶意不存在的 Key（防止缓存穿透）。
+- **可扩展 ID**: **Base62** 算法确保生成唯一且不冲突的短链接。
+- **缓存策略**: Redis **Cache-Aside** 模式 + 热点失效策略。
+- **架构设计**: 符合 12-Factor App 标准，整洁架构 (Handler -> Service -> Repository)。
+- **部署**: 容器化 & 云原生就绪 (支持 Docker Compose)。
 
-## 🛠️ Architecture
+## 🛠️ 架构设计
 
 `User -> [Nginx] -> Go App -> [Bloom Filter] -> Redis -> SQLite`
 
-## 📦 Getting Started
+## 📦 快速开始
 
-### Prerequisites
+### 环境要求
 
 - Go 1.23+
 - Docker & Docker Compose
 
-### Quick Run (Docker)
+### 快速运行 (Docker)
 
 ```bash
-# Clone the repo
-git clone https://github.com/YOUR_GITHUB_USERNAME/shorturl.git
+# 克隆仓库
+git clone https://github.com/Alitadie/shorturl.git
 cd shorturl
 
-# Start services
+# 启动服务
 make docker-up
 ```
 
-Access the service at: `http://localhost:8080`
+服务访问地址: `http://localhost:8080`
 
-### API Usage
+### API 使用指南
 
-**1. Create Short Link**
+**1. 创建短链接**
 
 ```bash
 curl -X POST http://localhost:8080/shorten \
@@ -48,19 +48,19 @@ curl -X POST http://localhost:8080/shorten \
 -d '{"url": "https://www.google.com"}'
 ```
 
-**2. Redirect**
+**2. 重定向**
 
 ```bash
 curl -I http://localhost:8080/{short_id}
 ```
 
-## 🧪 Testing
+## 🧪 测试
 
 ```bash
 go test ./...
 ```
 
-## 📄 License
+## 📄 许可证
 
 MIT
 
