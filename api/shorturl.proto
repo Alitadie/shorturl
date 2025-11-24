@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package api;
+
+// 定义短链服务契约
+service Shortener {
+    // 定义 RPC 方法：生成
+    rpc Create (CreateRequest) returns (CreateResponse);
+    // 定义 RPC 方法：查询
+    rpc Get (GetRequest) returns (GetResponse);
+}
+
+message CreateRequest {
+    string original_url = 1;
+}
+
+message CreateResponse {
+    string short_id = 1;
+    string short_url = 2;
+}
+
+message GetRequest {
+    string short_id = 1;
+}
+
+message GetResponse {
+    string original_url = 1;
+}

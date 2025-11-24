@@ -16,8 +16,19 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
+
+	// 引入 swag 文档
+	_ "shorturl/docs"
+
+	swaggerfiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+// @title ShortURL Service API
+// @version 0.9
+// @description High Performance Enterprise URL Shortener.
+// @host localhost:8080
+// @BasePath /
 func main() {
 	// 加载 .env 文件中的环境变量
 	err := godotenv.Load()
@@ -32,10 +43,15 @@ func main() {
 	config.Init()
 	repository.InitBloomFilter()
 
+	gin.SetMode(gin.DebugMode)
+
 	//2. 配置Gin
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(middleware.RequestLogger())
+
+	// 注册 Swagger 路由
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 
 	r.POST("/shorten", handler.CreateShortLink)
 	r.GET("/:id", handler.RedirectLink)

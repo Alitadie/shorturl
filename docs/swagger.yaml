@@ -1,0 +1,59 @@
+definitions:
+  handler.RequestBody:
+    properties:
+      url:
+        type: string
+    required:
+    - url
+    type: object
+info:
+  contact: {}
+paths:
+  /:id:
+    get:
+      consumes:
+      - application/json
+      description: 根据短链接 ID 重定向到原始 URL
+      parameters:
+      - description: Short Link ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 重定向短链接
+      tags:
+      - Link
+  /shorten:
+    post:
+      consumes:
+      - application/json
+      description: 接受 URL 并返回对应的 Base62 短链接
+      parameters:
+      - description: Original URL
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RequestBody'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 生成短链接
+      tags:
+      - Link
+swagger: "2.0"
