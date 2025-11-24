@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"shorturl/model"
@@ -70,6 +71,7 @@ func Init() {
 		options.Username = redisUsername
 	}
 
+	fmt.Println("Config Init: DB at %#v", options)
 	// 使用配置创建 Redis 客户端
 	RDB = redis.NewClient(options)
 
