@@ -78,3 +78,17 @@ func Init() {
 	}
 	log.Printf("Config Init: DB at %s, Redis at %s", dbPath, redisAddr)
 }
+
+func Close() {
+	if err := RDB.Close(); err != nil {
+		log.Fatal("failed to close redis", err)
+	}
+	sqlDB, err := DB.DB()
+	if err == nil {
+		err = sqlDB.Close()
+		if err != nil {
+			log.Fatal("failed to close Database", err)
+		}
+	}
+	log.Println("Resources closed")
+}
