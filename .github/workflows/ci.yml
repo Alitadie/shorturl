@@ -39,7 +39,7 @@ jobs:
     - name: Run Linter
       uses: golangci/golangci-lint-action@v9
       with:
-        version: v1.64.8
+        version: v2.6.2
         args: --timeout=15m --concurrency=4  # 增加超时和并行度
 
     # 第四步：下载依赖
