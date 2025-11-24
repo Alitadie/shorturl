@@ -26,20 +26,20 @@ jobs:
     steps:
     # 第一步：把代码下载到虚拟机里
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@@v6
 
-    # 第二步：配置 Go 环境 (1.23)
+    # 第二步：配置 Go 环境 (1.25.4)
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6.1.0
       with:
         go-version: '1.25.4'
 
     # 第三步：代码静态扫描 (Linter)
     # 这步会极其严格地检查你的代码质量 (golangci-lint 是业界标准)
     - name: Run Linter
-      uses: golangci/golangci-lint-action@v3
+      uses: golangci/golangci-lint-action@v9
       with:
-        version: v1.54
+        version: v1.64.8
         args: --timeout=15m --concurrency=4  # 增加超时和并行度
 
     # 第四步：下载依赖
