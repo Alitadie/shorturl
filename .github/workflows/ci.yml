@@ -32,7 +32,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23'
+        go-version: '1.25.4'
 
     # 第三步：代码静态扫描 (Linter)
     # 这步会极其严格地检查你的代码质量 (golangci-lint 是业界标准)
@@ -40,6 +40,7 @@ jobs:
       uses: golangci/golangci-lint-action@v3
       with:
         version: v1.54
+        args: --timeout=15m --concurrency=4  # 增加超时和并行度
 
     # 第四步：下载依赖
     - name: Download dependencies

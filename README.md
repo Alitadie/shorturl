@@ -22,7 +22,7 @@
 
 ### 环境要求
 
-- Go 1.23+
+- Go 1.25.4+
 - Docker & Docker Compose
 
 ### 快速运行 (Docker)
