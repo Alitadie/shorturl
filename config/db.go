@@ -2,14 +2,19 @@ package config
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"shorturl/model"
 	"strconv"
+	"time"
 
 	"github.com/redis/go-redis/v9"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 var (
@@ -27,22 +32,81 @@ func getEnv(key, defaultValue string) string {
 }
 
 func Init() {
-	var err error
-	// 1. SQLite 路径配置
-	// 容器内路径一般用 /data/shorturl.db，方便挂载卷
-	dbPath := getEnv("DB_PATH", "shorturl.db")
+	initDB()
+	initRedis()
+}
 
-	DB, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
+func initDB() {
+	var dialector gorm.Dialector
+
+	// 1.读取驱动类型默认sqlite
+	driver := getEnv("DB_DRIVER", "sqlite")
+	dsn := ""
+
+	log.Printf("正在初始化数据库，使用 %s", driver)
+
+	// 2.根据类型创建Dialector
+	switch driver {
+	case "sqlite":
+		dialector = sqlite.Open(getEnv("DB_PATH", "data/shorturl.db"))
+	case "mysql":
+		dsn = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+			getEnv("DB_USER", "root"),
+			getEnv("DB_PASSWORD", "root"),
+			getEnv("DB_HOST", "localhost"),
+			getEnv("DB_PORT", "3306"),
+			getEnv("DB_NAME", "shorturl"),
+		)
+		dialector = mysql.Open(dsn)
+	case "postgres":
+		dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
+			getEnv("DB_HOST", "localhost"),
+			getEnv("DB_USER", "postgres"),
+			getEnv("DB_PASSWORD", "postgres"),
+			getEnv("DB_NAME", "shorturl"),
+			getEnv("DB_PORT", "5432"),
+			getEnv("DB_SSL_MODE", "disable"),
+		)
+		dialector = postgres.Open(dsn)
+	default:
+		log.Fatalf("不支持的数据库类型: %s", driver)
+	}
+
+	// 3 连接数据库
+	var err error
+	DB, err = gorm.Open(dialector, &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Warn),
+	})
 	if err != nil {
 		log.Fatal("failed to connect database", err)
 	}
 
+	// 4. 【关键】配置连接池 (Production Ready)
+	sqlDB, err := DB.DB()
+	if err != nil {
+		log.Fatal("获取底层 SQL 对象失败")
+	}
+
+	// SetMaxIdleConns 设置空闲连接池中连接的最大数量
+	sqlDB.SetMaxIdleConns(10)
+
+	// SetMaxOpenConns 设置打开数据库连接的最大数量
+	// 注意：这个值不要超过数据库本身的 max_connections 配置
+	sqlDB.SetMaxOpenConns(100)
+
+	// SetConnMaxLifetime 设置了连接可复用的最大时间
+	// 避免连接长时间不用被防火墙切断导致 "Broken Pipe"
+	sqlDB.SetConnMaxLifetime(time.Hour)
+
+	// 5. 自动迁移表结构
+	log.Println("执行数据库自动迁移...")
 	if err := DB.AutoMigrate(&model.ShortLink{}); err != nil {
 		log.Fatal("failed to migrate database", err)
 	}
 
-	// 2. Redis 地址配置 (核心修改)
-	// 默认 localhost，但在 Docker 中我们要改成 "redis-service" 这种名字
+}
+
+func initRedis() {
 	redisAddr := getEnv("REDIS_ADDR", "192.168.123.220:6379")
 	redisPassword := getEnv("REDIS_PASSWORD", "")
 	redisUsername := getEnv("REDIS_USERNAME", "")
@@ -76,7 +140,7 @@ func Init() {
 	if err := RDB.Ping(Ctx).Err(); err != nil {
 		log.Fatal("failed to connect redis", err)
 	}
-	log.Printf("Config Init: DB at %s, Redis at %s", dbPath, redisAddr)
+	log.Printf("Config Init Redis at %s", redisAddr)
 }
 
 func Close() {

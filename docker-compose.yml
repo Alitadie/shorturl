@@ -9,13 +9,32 @@ services:
       - "8080:8080" # 映射主机8080到容器8080
     environment:
       - REDIS_ADDR=redis:6379 # 【重要】这里填 Redis 服务名，而不是 localhost
-      - DB_PATH=/data/shorturl.db
       - REDIS_PASSWORD=mysecretpassword
       - REDIS_USERNAME=myusername
+      # --- 方案 A: SQLite (默认) ---
+      # - DB_DRIVER=sqlite
+      # - DB_PATH=/data/shorturl.db
+      # --- 方案 B: MySQL ---
+      - DB_DRIVER=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=my-secret-pw
+      - DB_NAME=shorturl
+      # --- 方案 C: Postgres ---
+      # - DB_DRIVER=postgres
+      # - DB_HOST=postgres
+      # - DB_USER=postgres
+      # - DB_PASSWORD=postgres
+      # - DB_NAME=shorturl
+      # - DB_SSL_MODE=disable
+
     volumes:
       - ./data:/data # 【持久化】把容器内的/data映射到宿主机的data目录，防止SQLite数据丢失
     depends_on:
       - redis # 等 Redis 启动了再启动 App
+      - mysql # 根据你选的方案修改这里
+      # - postgres
     networks:
       - shorturl-net
 
@@ -34,10 +53,35 @@ services:
     command: [ "redis-server", "/usr/local/etc/redis/redis.conf" ] # 启动时加载自定义配置
     networks:
       - shorturl-net
+    # --- 数据库服务选项 1: MySQL ---
+  mysql:
+    image: mysql:8.0
+    container_name: shorturl-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: my-secret-pw
+      MYSQL_DATABASE: shorturl
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - shorturl-net
+  # --- 数据库服务选项 2: PostgreSQL ---
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: shorturl-postgres
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #     POSTGRES_DB: shorturl
+  #   volumes:
+  #     - pg_data:/var/lib/postgresql/data
+  #   networks:
+  #     - shorturl-net
 
-# 定义卷和网络
+  # 定义卷和网络
 volumes:
   redis_data:
+  mysql_data:
+  pg_data:
 
 
 networks:
