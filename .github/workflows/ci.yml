@@ -1,0 +1,58 @@
+name: Go Backend CI
+
+# 触发条件：
+# 1. 只有推送到 master 或 main 分支时
+# 2. 或者有人提交 Pull Request 时触发
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  # 定义一个叫 "test-and-build" 的任务
+  test-and-build:
+    # 运行环境：最新版 Ubuntu 虚拟机
+    runs-on: ubuntu-latest
+
+    # 【核心】配置依赖服务 (Service Containers)
+    # 因为我们的集成测试如果需要连接 Redis，CI 环境必须提供 Redis
+    services:
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+
+    steps:
+    # 第一步：把代码下载到虚拟机里
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # 第二步：配置 Go 环境 (1.23)
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+
+    # 第三步：代码静态扫描 (Linter)
+    # 这步会极其严格地检查你的代码质量 (golangci-lint 是业界标准)
+    - name: Run Linter
+      uses: golangci/golangci-lint-action@v3
+      with:
+        version: v1.54
+
+    # 第四步：下载依赖
+    - name: Download dependencies
+      run: go mod download
+
+    # 第五步：运行测试
+    # 我们设置 ENV，告诉测试代码 Redis 在 localhost (Service container 映射出来的)
+    # 这里的 -v -cover 还能显示代码覆盖率
+    - name: Run Unit Tests
+      env:
+        REDIS_ADDR: "localhost:6379"
+      run: go test -v -cover ./...
+
+    # 第六步：尝试构建 (验证是否能编译成二进制文件)
+    - name: Build Application
+      run: go build -v ./...
