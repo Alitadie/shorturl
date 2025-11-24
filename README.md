@@ -1,66 +1,113 @@
-# ShortURL - 高性能 URL 短链接服务
+# 🚀 ShortURL - 企业级微服务
 
-[![Go Backend CI](https://github.com/Alitadie/shorturl/actions/workflows/ci.yml/badge.svg)](https://github.com/Alitadie/shorturl/actions)
-![Go Version](https://img.shields.io/badge/Go-1.23-blue)
+![Build Status](https://github.com/Alitadie/shorturl/actions/workflows/ci.yml/badge.svg)
+![Go Version](https://img.shields.io/badge/Go-1.25+-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
+![Docker](https://img.shields.io/badge/Docker-Supported-blue)
 
-基于 Golang、Redis、SQLite（支持布隆过滤器）构建的可扩展 URL 短链接服务。采用领域驱动设计 (DDD) 原则和 Cache-Aside 模式设计。
+一个用 Go 编写的高性能、可扩展的短链接服务。
+拥有 **Base62 算法**、防止缓存穿透的 **布隆过滤器 (Bloom Filter)**、**分布式追踪** 和 **优雅停机** 等特性。
 
-## 🚀 功能特性
+---
 
-- **高性能**: 内存 **布隆过滤器** 拦截恶意不存在的 Key（防止缓存穿透）。
-- **可扩展 ID**: **Base62** 算法确保生成唯一且不冲突的短链接。
-- **缓存策略**: Redis **Cache-Aside** 模式 + 热点失效策略。
-- **架构设计**: 符合 12-Factor App 标准，整洁架构 (Handler -> Service -> Repository)。
-- **部署**: 容器化 & 云原生就绪 (支持 Docker Compose)。
+## ✨ 核心特性
 
-## 🛠️ 架构设计
+- **高性能**: 采用 **Redis Cache-Aside** 策略优化。
+- **安全性**: 集成 **布隆过滤器 (Bloom Filter)**，拦截 99% 的恶意不存在 ID 请求。
+- **可扩展性**: 数据库 ID 采用 **Base62** 编码（无冲突）。
+- **多数据库支持**: 一行代码切换 **MySQL / PostgreSQL / SQLite**。
+- **可观测性**: 结构化日志 (Zap) 配合 **TraceID**。
+- **可靠性**: 符合 12-Factor App 原则，支持优雅停机，容器化部署。
 
-`User -> [Nginx] -> Go App -> [Bloom Filter] -> Redis -> SQLite`
+---
 
-## 📦 快速开始
+## 🛠️ 配置 (环境变量)
 
-### 环境要求
+| 变量名           | 默认值              | 说明                            |
+|------------------|---------------------|---------------------------------|
+| `DB_DRIVER`      | `sqlite`            | `sqlite`, `mysql`, `postgres`   |
+| `DB_HOST`        | `localhost`         | 数据库主机                      |
+| `DB_USER`        | `root`              | 数据库用户                      |
+| `DB_PASSWORD`    | -                   | 数据库密码                      |
+| `REDIS_ADDR`     | `localhost:6379`    | Redis 地址                      |
 
-- Go 1.25.4+
-- Docker & Docker Compose
+---
 
-### 快速运行 (Docker)
+## 📁 项目结构
+
+```
+shorturl/
+├── .github/workflows/     # CI 自动化配置
+│   └── ci.yml
+├── config/                # 配置管理 (DB工厂, Redis, ENV)
+│   └── db.go
+├── docs/                  # Swagger 自动生成的文档
+│   ├── docs.go
+│   └── swagger.json
+├── handler/               # HTTP 接口层 (Gin Handler)
+│   └── http_hdl.go
+├── middleware/            # 中间件 (Logger, Recovery)
+│   └── logger.go
+├── model/                 # 数据库模型 (GORM Struct)
+│   └── link.go
+├── pkg/                   # 公共工具包
+│   └── base62/            # 核心算法
+│       ├── base62.go
+│       └── base62_test.go
+├── repository/            # 仓储层 (DB+Redis+BloomFilter)
+│   └── link_repo.go
+├── data/                  # 挂载目录 (放.db文件)
+├── docker-compose.yml     # 容器编排
+├── Dockerfile             # 镜像构建
+├── go.mod
+├── go.sum
+├── main.go                # 入口文件
+├── Makefile               # 构建命令
+├── README.md              # 说明书
+└── LICENSE                # 开源协议 (新增)
+```
+---
+
+## 🚀 快速开始
+
+### 使用 Docker (推荐)
 
 ```bash
-# 克隆仓库
-git clone https://github.com/Alitadie/shorturl.git
-cd shorturl
-
-# 启动服务
+# 1. 使用 Docker Compose 运行 (包含 Redis 和 应用)
 make docker-up
+
+# 2. (可选) 切换到 MySQL
+# 在 docker-compose.yml 中取消注释 MySQL 部分并重启
 ```
 
-服务访问地址: `http://localhost:8080`
-
-### API 使用指南
-
-**1. 创建短链接**
+### 本地开发
 
 ```bash
-curl -X POST http://localhost:8080/shorten \
--H "Content-Type: application/json" \
--d '{"url": "https://www.google.com"}'
+# 1. 启动依赖
+docker run -d -p 6379:6379 redis:alpine
+
+# 2. 运行应用
+go run main.go
 ```
 
-**2. 重定向**
+API 文档地址: `http://localhost:8080/swagger/index.html`
 
+---
+
+## 🔗 API 参考
+
+**POST /shorten** - 创建短链接
+```json
+{"url": "https://www.google.com"}
+```
+
+**GET /:id** - 重定向
 ```bash
-curl -I http://localhost:8080/{short_id}
+curl -I http://localhost:8080/AbC9
 ```
 
-## 🧪 测试
+---
 
-```bash
-go test ./...
-```
+## 🤝 贡献
 
-## 📄 许可证
-
-MIT
-
+欢迎提交 Pull Request。对于重大更改，请先提交 Issue 进行讨论。
