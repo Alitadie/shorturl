@@ -10,6 +10,8 @@ services:
     environment:
       - REDIS_ADDR=redis:6379 # 【重要】这里填 Redis 服务名，而不是 localhost
       - DB_PATH=/data/shorturl.db
+      - REDIS_PASSWORD=mysecretpassword
+      - REDIS_USERNAME=myusername
     volumes:
       - ./data:/data # 【持久化】把容器内的/data映射到宿主机的data目录，防止SQLite数据丢失
     depends_on:
@@ -21,10 +23,15 @@ services:
   redis:
     image: redis:alpine
     container_name: shorturl-redis
+    environment:
+      - REDIS_PASSWORD=mysecretpassword
     ports:
       - "6379:6379" # 开发调试用，生产环境不需要映射到外部
     volumes:
       - redis_data:/data # 持久化 Redis 数据
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf # 挂载自定义的 redis.conf
+      - ./redis/users.acl:/etc/redis/users.acl # 挂载自定义的 users.acl
+    command: [ "redis-server", "/usr/local/etc/redis/redis.conf" ] # 启动时加载自定义配置
     networks:
       - shorturl-net
 

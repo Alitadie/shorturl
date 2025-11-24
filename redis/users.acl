@@ -1,0 +1,2 @@
+user myusername on >mysecretpassword ~* +@all
+user default off
