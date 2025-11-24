@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"shorturl/config"
 	"shorturl/handler"
 	"shorturl/repository"
@@ -17,5 +18,8 @@ func main() {
 	r := gin.Default()
 	r.POST("/shorten", handler.CreateShortLink)
 	r.GET("/:id", handler.RedirectLink)
-	r.Run(":8080")
+	err := r.Run(":8080")
+	if err != nil {
+		log.Fatal("failed to run server", err)
+	}
 }

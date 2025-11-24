@@ -37,7 +37,9 @@ func Init() {
 		log.Fatal("failed to connect database", err)
 	}
 
-	DB.AutoMigrate(&model.ShortLink{})
+	if err := DB.AutoMigrate(&model.ShortLink{}); err != nil {
+		log.Fatal("failed to migrate database", err)
+	}
 
 	// 2. Redis 地址配置 (核心修改)
 	// 默认 localhost，但在 Docker 中我们要改成 "redis-service" 这种名字
